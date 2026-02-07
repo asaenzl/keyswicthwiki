@@ -3,7 +3,6 @@ services:
     name: keyswitchwiki
     env: java
     plan: free
-    rootDir: keyswitchwiki
     buildCommand: ./mvnw clean install -DskipTests
     startCommand: java -jar target/keyswitchwiki-0.0.1-SNAPSHOT.jar
     envVars:
