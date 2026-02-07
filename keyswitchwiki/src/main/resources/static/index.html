@@ -1,343 +1,107 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KeySwitch Wiki</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+let allSwitches = [];
+let currentFilter = 'ALL';
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+// Detect if running locally or in production
+const API_URL = window.location.hostname === 'localhost'
+? 'http://localhost:8080'
+: window.location.origin;
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+// Cargar switches al iniciar
+async function loadSwitches() {
+try {
+const response = await fetch(`${API_URL}/api/switches`);
+allSwitches = await response.json();
+displaySwitches(allSwitches);
+} catch (error) {
+console.error('Error loading switches:', error);
+document.getElementById('switchesContainer').innerHTML =
+'<div class="no-results">Error al cargar los switches. Asegúrate que el servidor esté corriendo.</div>';
+}
+}
 
-        header {
-            text-align: center;
-            color: white;
-            margin-bottom: 40px;
-        }
+// Mostrar switches
+function displaySwitches(switches) {
+const container = document.getElementById('switchesContainer');
 
-        h1 {
-            font-size: 3em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
+if (switches.length === 0) {
+container.innerHTML = '<div class="no-results">No se encontraron switches</div>';
+return;
+}
 
-        .subtitle {
-            font-size: 1.2em;
-            opacity: 0.9;
-        }
-
-        .controls {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .search-box {
-            flex: 1;
-            min-width: 250px;
-        }
-
-        .search-box input {
-            width: 100%;
-            padding: 12px 20px;
-            border: 2px solid #ddd;
-            border-radius: 25px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-
-        .search-box input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .filter-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .filter-btn {
-            padding: 10px 20px;
-            border: 2px solid #667eea;
-            background: white;
-            color: #667eea;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-
-        .filter-btn:hover {
-            background: #667eea;
-            color: white;
-        }
-
-        .filter-btn.active {
-            background: #667eea;
-            color: white;
-        }
-
-        .switches-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
-        }
-
-        .switch-card {
-            background: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.3s, box-shadow 0.3s;
-            cursor: pointer;
-        }
-
-        .switch-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 12px rgba(0,0,0,0.15);
-        }
-
-        .switch-image {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        }
-
-        .switch-info {
-            padding: 20px;
-        }
-
-        .switch-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 10px;
-        }
-
-        .switch-name {
-            font-size: 1.4em;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .switch-type {
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 0.8em;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .type-linear {
-            background: #e3f2fd;
-            color: #1976d2;
-        }
-
-        .type-tactile {
-            background: #f3e5f5;
-            color: #7b1fa2;
-        }
-
-        .type-clicky {
-            background: #fff3e0;
-            color: #e65100;
-        }
-
-        .switch-brand {
-            color: #666;
-            margin-bottom: 15px;
-        }
-
-        .switch-specs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #eee;
-        }
-
-        .spec-item {
-            font-size: 0.9em;
-        }
-
-        .spec-label {
-            color: #999;
-            font-size: 0.85em;
-        }
-
-        .spec-value {
-            color: #333;
-            font-weight: 600;
-        }
-
-        .loading {
-            text-align: center;
-            color: white;
-            font-size: 1.5em;
-            padding: 50px;
-        }
-
-        .no-results {
-            text-align: center;
-            color: white;
-            font-size: 1.3em;
-            padding: 50px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-        }
-    </style>
-</head>
-<body>
-<div class="container">
-    <header>
-        <h1>🎹 KeySwitch Wiki</h1>
-        <p class="subtitle">Explora y compara switches para teclados mecánicos</p>
-    </header>
-
-    <div class="controls">
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="🔍 Buscar por marca o modelo...">
+container.innerHTML = switches.map(sw => `
+<div class="switch-card">
+    <img src="${API_URL}/api/switches/${sw.id}/image"
+         class="switch-image"
+         alt="${sw.brand} ${sw.model}"
+         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22300%22 height=%22200%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2220%22%3ESin imagen%3C/text%3E%3C/svg%3E'">
+    <div class="switch-info">
+        <div class="switch-header">
+            <div>
+                <div class="switch-name">${sw.brand} ${sw.model}</div>
+                <div class="switch-brand">${sw.brand}</div>
+            </div>
+            <span class="switch-type type-${sw.switchType.toLowerCase()}">${sw.switchType}</span>
         </div>
-        <div class="filter-buttons">
-            <button class="filter-btn active" data-type="ALL">Todos</button>
-            <button class="filter-btn" data-type="LINEAR">Linear</button>
-            <button class="filter-btn" data-type="TACTILE">Táctil</button>
-            <button class="filter-btn" data-type="CLICKY">Clicky</button>
+        <p style="color: #666; font-size: 0.9em; margin-bottom: 10px;">${sw.description || ''}</p>
+        <div class="switch-specs">
+            <div class="spec-item">
+                <div class="spec-label">Fuerza</div>
+                <div class="spec-value">${sw.actuationForceGrams || 'N/A'}g</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Precio</div>
+                <div class="spec-value">$${sw.typicalPriceUsd || 'N/A'}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Recorrido</div>
+                <div class="spec-value">${sw.totalTravelMm || 'N/A'}mm</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Lubricado</div>
+                <div class="spec-value">${sw.isFactoryLubed ? 'Sí' : 'No'}</div>
+            </div>
         </div>
-    </div>
-
-    <div id="switchesContainer" class="switches-grid">
-        <div class="loading">Cargando switches...</div>
     </div>
 </div>
+`).join('');
+}
 
-<script>
-    let allSwitches = [];
-    let currentFilter = 'ALL';
+// Filtrar por tipo
+document.querySelectorAll('.filter-btn').forEach(btn => {
+btn.addEventListener('click', () => {
+document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+btn.classList.add('active');
 
-    // Cargar switches al iniciar
-    async function loadSwitches() {
-        try {
-            const response = await fetch('http://localhost:8080/api/switches');
-            allSwitches = await response.json();
-            displaySwitches(allSwitches);
-        } catch (error) {
-            console.error('Error loading switches:', error);
-            document.getElementById('switchesContainer').innerHTML =
-                '<div class="no-results">Error al cargar los switches. Asegúrate que el servidor esté corriendo.</div>';
-        }
-    }
+currentFilter = btn.dataset.type;
+filterAndSearch();
+});
+});
 
-    // Mostrar switches
-    function displaySwitches(switches) {
-        const container = document.getElementById('switchesContainer');
+// Buscar
+document.getElementById('searchInput').addEventListener('input', (e) => {
+filterAndSearch();
+});
 
-        if (switches.length === 0) {
-            container.innerHTML = '<div class="no-results">No se encontraron switches</div>';
-            return;
-        }
+// Aplicar filtros y búsqueda
+function filterAndSearch() {
+let filtered = allSwitches;
 
-        container.innerHTML = switches.map(sw => `
-            <div class="switch-card">
-                <img src="http://localhost:8080/api/switches/${sw.id}/image"
-                     class="switch-image"
-                     alt="${sw.brand} ${sw.model}"
-                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22300%22 height=%22200%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2220%22%3ESin imagen%3C/text%3E%3C/svg%3E'">
-                <div class="switch-info">
-                    <div class="switch-header">
-                        <div>
-                            <div class="switch-name">${sw.brand} ${sw.model}</div>
-                            <div class="switch-brand">${sw.brand}</div>
-                        </div>
-                        <span class="switch-type type-${sw.switchType.toLowerCase()}">${sw.switchType}</span>
-                    </div>
-                    <p style="color: #666; font-size: 0.9em; margin-bottom: 10px;">${sw.description || ''}</p>
-                    <div class="switch-specs">
-                        <div class="spec-item">
-                            <div class="spec-label">Fuerza</div>
-                            <div class="spec-value">${sw.actuationForceGrams || 'N/A'}g</div>
-                        </div>
-                        <div class="spec-item">
-                            <div class="spec-label">Precio</div>
-                            <div class="spec-value">$${sw.typicalPriceUsd || 'N/A'}</div>
-                        </div>
-                        <div class="spec-item">
-                            <div class="spec-label">Recorrido</div>
-                            <div class="spec-value">${sw.totalTravelMm || 'N/A'}mm</div>
-                        </div>
-                        <div class="spec-item">
-                            <div class="spec-label">Lubricado</div>
-                            <div class="spec-value">${sw.isFactoryLubed ? 'Sí' : 'No'}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-    }
+// Filtrar por tipo
+if (currentFilter !== 'ALL') {
+filtered = filtered.filter(sw => sw.switchType === currentFilter);
+}
 
-    // Filtrar por tipo
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+// Buscar por texto
+const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+if (searchTerm) {
+filtered = filtered.filter(sw =>
+sw.brand.toLowerCase().includes(searchTerm) ||
+sw.model.toLowerCase().includes(searchTerm)
+);
+}
 
-            currentFilter = btn.dataset.type;
-            filterAndSearch();
-        });
-    });
+displaySwitches(filtered);
+}
 
-    // Buscar
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-        filterAndSearch();
-    });
-
-    // Aplicar filtros y búsqueda
-    function filterAndSearch() {
-        let filtered = allSwitches;
-
-        // Filtrar por tipo
-        if (currentFilter !== 'ALL') {
-            filtered = filtered.filter(sw => sw.switchType === currentFilter);
-        }
-
-        // Buscar por texto
-        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-        if (searchTerm) {
-            filtered = filtered.filter(sw =>
-                sw.brand.toLowerCase().includes(searchTerm) ||
-                sw.model.toLowerCase().includes(searchTerm)
-            );
-        }
-
-        displaySwitches(filtered);
-    }
-
-    // Cargar switches al iniciar
-    loadSwitches();
-</script>
-</body>
-</html>
+// Cargar switches al iniciar
+loadSwitches();
